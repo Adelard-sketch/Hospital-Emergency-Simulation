@@ -67,7 +67,7 @@ Kaggle Dataset → Data Cleaning → Distribution Fitting → Simulation Paramet
 
 1. **Clone or download the repository**
    ```bash
-   cd Group11_Final_Project
+   cd ED-Simulation-Dashboard
    ```
 
 2. **Install required dependencies**

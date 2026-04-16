@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ED Simulation - Live Animation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f5f7fa;
+      padding: 10px;
+    }
+
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: #3182bd;
+      color: white;
+      padding: 15px 20px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 500;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .controls select,
+    .controls input {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #28a745;
+      color: white;
+    }
+
+    .btn-primary:hover { background: #218838; }
+
+    .btn-secondary {
+      background: #dc3545;
+      color: white;
+    }
+
+    .btn-secondary:hover { background: #c82333; }
+
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 8px 10px;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .stat-label {
+      font-size: 9px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 600;
+      color: #3182bd;
+    }
+
+    .simulation-area {
+      background: white;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    .zone {
+      padding: 12px;
+      border-radius: 6px;
+      background: #f8f9fa;
+      border: 2px solid #dee2e6;
+    }
+
+    .zone-header {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #495057;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .zone-count {
+      font-size: 12px;
+      background: #6c757d;
+      color: white;
+      padding: 3px 10px;
+      border-radius: 10px;
+    }
+
+    .patients-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 50px;
+    }
+
+    .patient {
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+      color: white;
+      cursor: pointer;
+      transition: transform 0.3s, box-shadow 0.3s;
+      animation: fadeIn 0.3s;
+      position: relative;
+    }
+
+    .patient:hover {
+      transform: scale(1.2);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes fadeOut {
+      from { opacity: 1; transform: scale(1); }
+      to { opacity: 0; transform: scale(0); }
+    }
+
+    .patient.leaving {
+      animation: fadeOut 0.3s;
+    }
+
+    .patient-red { background: #dc3545; }
+    .patient-orange { background: #fd7e14; }
+    .patient-yellow { background: #ffc107; color: #333; }
+    .patient-green { background: #28a745; }
+    .patient-blue { background: #007bff; }
+
+    .resources {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .resource {
+      width: 70px;
+      height: 70px;
+      border: 2px solid #dee2e6;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: white;
+      transition: all 0.3s;
+    }
+
+    .resource.occupied {
+      border-color: #3182bd;
+      background: #e7f3ff;
+    }
+
+    .resource-label {
+      font-size: 9px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .resource-patient {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+      color: white;
+    }
+
+    .speed-control {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: white;
+    }
+
+    .speed-control label {
+      font-size: 14px;
+    }
+
+    .speed-control input {
+      width: 100px;
+    }
+
+    .log-panel {
+      background: #2d3748;
+      color: #e2e8f0;
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 10px;
+      max-height: 150px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+    }
+
+    .log-entry {
+      padding: 3px 0;
+      border-bottom: 1px solid #4a5568;
+    }
+
+    .log-time {
+      color: #90cdf4;
+      margin-right: 10px;
+    }
+
+    .tooltip {
+      position: absolute;
+      background: rgba(0,0,0,0.9);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      pointer-events: none;
+      z-index: 1000;
+      white-space: nowrap;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div>
+      <h1>🏥 ED Simulation - Live Animation</h1>
+      <p style="font-size: 14px; opacity: 0.9; margin-top: 5px;">Watch patients flow through the Emergency Department in real-time</p>
+    </div>
+    <div class="controls">
+      <select id="staffing">
+        <option value="weekday">Weekday Staffing</option>
+        <option value="weekend">Weekend Staffing</option>
+      </select>
+      <select id="policy">
+        <option value="baseline">Baseline</option>
+        <option value="fast_track">Fast Track</option>
+        <option value="split_flow">Split Flow</option>
+      </select>
+      <div class="speed-control">
+        <label>Speed:</label>
+        <input type="range" id="speed" min="5" max="50" value="20">
+        <span id="speedLabel">20x</span>
+      </div>
+      <button class="btn btn-primary" id="startBtn" onclick="startSimulation()">Start</button>
+      <button class="btn btn-secondary" id="stopBtn" onclick="stopSimulation()" disabled>Stop</button>
+    </div>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-label">Sim Time</div>
+      <div class="stat-value" id="simTime">0:00</div>
+      <div class="m-sub" style="font-size: 10px; color: #999; margin-top: 2px;" id="simHour">Hour 0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Arrival Rate</div>
+      <div class="stat-value" id="arrivalRate">0</div>
+      <div class="m-sub" style="font-size: 10px; color: #999; margin-top: 2px;">patients/hour</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Arrivals</div>
+      <div class="stat-value" id="totalArrivals">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">In System</div>
+      <div class="stat-value" id="inSystem">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Completed</div>
+      <div class="stat-value" id="completed">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Wait</div>
+      <div class="stat-value" id="avgWait">0</div>
+      <div class="m-sub" style="font-size: 10px; color: #999; margin-top: 2px;">minutes</div>
+    </div>
+  </div>
+
+  <div class="simulation-area">
+    <div class="zone">
+      <div class="zone-header">
+        <span>🚪 Waiting for Triage</span>
+        <span class="zone-count" id="triageQueueCount">0</span>
+      </div>
+      <div class="patients-container" id="triageQueue"></div>
+    </div>
+
+    <div class="zone">
+      <div class="zone-header">
+        <span>🩺 Triage Stations</span>
+        <span class="zone-count" id="triageStationsCount">0/3</span>
+      </div>
+      <div class="resources" id="triageStations"></div>
+    </div>
+
+    <div class="zone">
+      <div class="zone-header">
+        <span>⏳ Waiting for Treatment</span>
+        <span class="zone-count" id="treatmentQueueCount">0</span>
+      </div>
+      <div class="patients-container" id="treatmentQueue"></div>
+    </div>
+
+    <div class="zone">
+      <div class="zone-header">
+        <span>🏥 Treatment Bays</span>
+        <span class="zone-count" id="treatmentBaysCount">0/12</span>
+      </div>
+      <div class="resources" id="treatmentBays"></div>
+    </div>
+  </div>
+
+  <div class="log-panel" id="logPanel"></div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+  let simRunning = false;
+  let simTime = 0;
+  let patients = [];
+  let patientIdCounter = 1;
+  let stats = {
+    arrivals: 0,
+    completed: 0,
+    lwbs: 0,
+    totalWait: 0,
+    waitCount: 0
+  };
+  
+  let triageStations = [];
+  let treatmentBays = [];
+  let triageQueue = [];
+  let treatmentQueue = [];
+  
+  const acuityColors = {
+    'Red': 'patient-red',
+    'Orange': 'patient-orange',
+    'Yellow': 'patient-yellow',
+    'Green': 'patient-green',
+    'Blue': 'patient-blue'
+  };
+
+  // These will be loaded from the server
+  let acuityMix = {};
+  let hourlyArrivalRates = [];
+  let triageTimeMean = 5.88;
+  let serviceDistributions = {};
+
+  // Load real data from server on page load
+  async function loadParameters() {
+    try {
+      const res = await fetch('/api/parameters');
+      const params = await res.json();
+      
+      acuityMix = params.acuity_mix;
+      hourlyArrivalRates = params.hourly_arrivals;
+      triageTimeMean = params.triage_time_mean;
+      serviceDistributions = params.service_distributions;
+      
+      console.log('Loaded parameters from CSV data:', params);
+      console.log('Acuity mix:', acuityMix);
+      console.log('Mean arrival rate:', hourlyArrivalRates.reduce((a,b) => a+b, 0) / 24);
+    } catch (e) {
+      console.error('Failed to load parameters:', e);
+      alert('Failed to load simulation parameters from server. Using defaults.');
+      // Fallback defaults
+      acuityMix = {
+        'Red': 0.015,
+        'Orange': 0.149,
+        'Yellow': 0.376,
+        'Green': 0.453,
+        'Blue': 0.007
+      };
+      hourlyArrivalRates = Array(24).fill(7.59);
+      triageTimeMean = 5.88;
+    }
+  }
+
+  function startSimulation() {
+    simRunning = true;
+    simTime = 0;
+    patientIdCounter = 1;
+    stats = { arrivals: 0, completed: 0, lwbs: 0, totalWait: 0, waitCount: 0 };
+    patients = [];
+    triageQueue = [];
+    treatmentQueue = [];
+    
+    document.getElementById('startBtn').disabled = true;
+    document.getElementById('stopBtn').disabled = false;
+    document.getElementById('logPanel').innerHTML = '';
+    
+    const staffing = document.getElementById('staffing').value;
+    const numNurses = staffing === 'weekday' ? 3 : 2;
+    const numBays = staffing === 'weekday' ? 12 : 8;
+    
+    initializeResources(numNurses, numBays);
+    log('Simulation started');
+    
+    simulationLoop();
+  }
+
+  function stopSimulation() {
+    simRunning = false;
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('stopBtn').disabled = true;
+    log('Simulation stopped');
+  }
+
+  function initializeResources(nurses, bays) {
+    triageStations = Array(nurses).fill(null);
+    treatmentBays = Array(bays).fill(null);
+    renderResources();
+  }
+
+  function simulationLoop() {
+    if (!simRunning) return;
+    
+    const speed = parseInt(document.getElementById('speed').value);
+    const timeStep = speed * 0.5; // minutes per tick
+    
+    simTime += timeStep;
+    
+    // Get current hour for arrival rate (0-23)
+    const currentHour = Math.floor((simTime / 60) % 24);
+    const arrivalRate = hourlyArrivalRates[currentHour] || 7.59; // patients per hour
+    
+    // Convert hourly rate to probability per time step
+    // If rate is 10 patients/hour and timeStep is 1 minute, probability = 10/60 = 0.167
+    const arrivalProbPerMinute = arrivalRate / 60;
+    const arrivalProb = arrivalProbPerMinute * timeStep;
+    
+    // Generate arrivals based on probability
+    // For high rates, we might get multiple arrivals per tick
+    const expectedArrivals = arrivalProb;
+    const numArrivals = Math.random() < (expectedArrivals % 1) ? Math.floor(expectedArrivals) + 1 : Math.floor(expectedArrivals);
+    
+    for (let i = 0; i < numArrivals; i++) {
+      arrivePatient();
+    }
+    
+    // Process triage queue
+    processTriageQueue();
+    
+    // Process treatment queue
+    processTreatmentQueue();
+    
+    // Update patient timers
+    updatePatients();
+    
+    // Update display
+    updateDisplay();
+    
+    setTimeout(simulationLoop, 100);
+  }
+
+  function arrivePatient() {
+    const acuities = Object.keys(acuityMix);
+    const probs = Object.values(acuityMix);
+    const acuity = weightedRandom(acuities, probs);
+    
+    const currentHour = Math.floor((simTime / 60) % 24);
+    
+    const patient = {
+      id: patientIdCounter++,
+      acuity: acuity,
+      arrivalTime: simTime,
+      arrivalHour: currentHour,
+      triageStartTime: null,
+      triageEndTime: null,
+      treatmentStartTime: null,
+      treatmentEndTime: null,
+      status: 'waiting_triage',
+      timeInCurrentStatus: 0
+    };
+    
+    patients.push(patient);
+    triageQueue.push(patient);
+    stats.arrivals++;
+    
+    log(`Patient ${patient.id} (${acuity}) arrived at hour ${currentHour}`);
+  }
+
+  function processTriageQueue() {
+    // Sort by priority (Red=1, Orange=2, etc.)
+    const priority = { 'Red': 1, 'Orange': 2, 'Yellow': 3, 'Green': 4, 'Blue': 5 };
+    triageQueue.sort((a, b) => priority[a.acuity] - priority[b.acuity]);
+    
+    for (let i = 0; i < triageStations.length; i++) {
+      if (triageStations[i] === null && triageQueue.length > 0) {
+        const patient = triageQueue.shift();
+        patient.status = 'in_triage';
+        patient.triageStartTime = simTime;
+        patient.timeInCurrentStatus = 0;
+        // Use triage time from CSV data with some randomness
+        patient.triageDuration = Math.max(1, triageTimeMean * (0.7 + Math.random() * 0.6));
+        triageStations[i] = patient;
+        
+        const waitTime = simTime - patient.arrivalTime;
+        stats.totalWait += waitTime;
+        stats.waitCount++;
+        
+        log(`Patient ${patient.id} started triage (waited ${waitTime.toFixed(1)} min)`);
+      }
+      
+      // Check if triage is complete
+      if (triageStations[i] && triageStations[i].timeInCurrentStatus >= triageStations[i].triageDuration) {
+        const patient = triageStations[i];
+        patient.status = 'waiting_treatment';
+        patient.triageEndTime = simTime;
+        patient.timeInCurrentStatus = 0;
+        treatmentQueue.push(patient);
+        triageStations[i] = null;
+        
+        log(`Patient ${patient.id} completed triage, waiting for treatment`);
+      }
+    }
+  }
+
+  function sampleServiceTime(acuity) {
+    // Use service time distributions from CSV data
+    if (!serviceDistributions[acuity]) {
+      return 20 + Math.random() * 40; // fallback
+    }
+    
+    const dist = serviceDistributions[acuity];
+    const distName = dist.distribution;
+    const params = dist.params;
+    
+    // Simplified sampling - use exponential or lognormal approximation
+    if (distName === 'expon') {
+      // Exponential: params = [loc, scale]
+      const scale = params[1] || 30;
+      return Math.max(5, -Math.log(Math.random()) * scale);
+    } else if (distName === 'lognorm') {
+      // Lognormal approximation: params = [shape, loc, scale]
+      const scale = params[2] || 30;
+      const shape = params[0] || 0.8;
+      // Simple lognormal approximation
+      const normal = Math.sqrt(-2 * Math.log(Math.random())) * Math.cos(2 * Math.PI * Math.random());
+      return Math.max(5, Math.exp(normal * shape) * scale);
+    } else {
+      // Gamma or other - use mean approximation
+      const scale = params[params.length - 1] || 30;
+      return Math.max(5, scale * (0.5 + Math.random()));
+    }
+  }
+
+  function processTreatmentQueue() {
+    const priority = { 'Red': 1, 'Orange': 2, 'Yellow': 3, 'Green': 4, 'Blue': 5 };
+    treatmentQueue.sort((a, b) => priority[a.acuity] - priority[b.acuity]);
+    
+    for (let i = 0; i < treatmentBays.length; i++) {
+      if (treatmentBays[i] === null && treatmentQueue.length > 0) {
+        const patient = treatmentQueue.shift();
+        patient.status = 'in_treatment';
+        patient.treatmentStartTime = simTime;
+        patient.timeInCurrentStatus = 0;
+        // Use service time from CSV data distributions
+        patient.treatmentDuration = sampleServiceTime(patient.acuity);
+        treatmentBays[i] = patient;
+        
+        log(`Patient ${patient.id} started treatment`);
+      }
+      
+      // Check if treatment is complete
+      if (treatmentBays[i] && treatmentBays[i].timeInCurrentStatus >= treatmentBays[i].treatmentDuration) {
+        const patient = treatmentBays[i];
+        patient.status = 'completed';
+        stats.completed++;
+        treatmentBays[i] = null;
+        
+        const totalTime = simTime - patient.arrivalTime;
+        log(`Patient ${patient.id} discharged (total time: ${totalTime.toFixed(1)} min)`);
+        
+        // Remove from patients array after animation
+        setTimeout(() => {
+          const idx = patients.indexOf(patient);
+          if (idx > -1) patients.splice(idx, 1);
+        }, 500);
+      }
+    }
+  }
+
+  function updatePatients() {
+    const speed = parseInt(document.getElementById('speed').value);
+    const timeStep = speed * 0.5;
+    
+    patients.forEach(p => {
+      p.timeInCurrentStatus += timeStep;
+      
+      // Check for LWBS (simplified)
+      if (p.status === 'waiting_triage' && p.timeInCurrentStatus > 60) {
+        const idx = triageQueue.indexOf(p);
+        if (idx > -1) {
+          triageQueue.splice(idx, 1);
+          p.status = 'lwbs';
+          stats.lwbs++;
+          log(`Patient ${p.id} left without being seen`);
+          
+          setTimeout(() => {
+            const pidx = patients.indexOf(p);
+            if (pidx > -1) patients.splice(pidx, 1);
+          }, 500);
+        }
+      }
+    });
+  }
+
+  function updateDisplay() {
+    // Update time
+    const hours = Math.floor(simTime / 60);
+    const mins = Math.floor(simTime % 60);
+    const currentHour = Math.floor((simTime / 60) % 24);
+    const currentArrivalRate = hourlyArrivalRates[currentHour] || 0;
+    
+    document.getElementById('simTime').textContent = `${hours}:${mins.toString().padStart(2, '0')}`;
+    document.getElementById('simHour').textContent = `Hour ${currentHour}`;
+    document.getElementById('arrivalRate').textContent = currentArrivalRate.toFixed(1);
+    
+    // Update stats
+    document.getElementById('totalArrivals').textContent = stats.arrivals;
+    document.getElementById('inSystem').textContent = patients.filter(p => p.status !== 'completed' && p.status !== 'lwbs').length;
+    document.getElementById('completed').textContent = stats.completed;
+    document.getElementById('avgWait').textContent = stats.waitCount > 0 ? (stats.totalWait / stats.waitCount).toFixed(1) : '0';
+    
+    // Update queues
+    renderQueue('triageQueue', triageQueue);
+    renderQueue('treatmentQueue', treatmentQueue);
+    renderResources();
+    
+    // Update counts
+    document.getElementById('triageQueueCount').textContent = triageQueue.length;
+    document.getElementById('treatmentQueueCount').textContent = treatmentQueue.length;
+    document.getElementById('triageStationsCount').textContent = `${triageStations.filter(s => s !== null).length}/${triageStations.length}`;
+    document.getElementById('treatmentBaysCount').textContent = `${treatmentBays.filter(b => b !== null).length}/${treatmentBays.length}`;
+  }
+
+  function renderQueue(containerId, queue) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    
+    queue.forEach(patient => {
+      const el = createPatientElement(patient);
+      container.appendChild(el);
+    });
+  }
+
+  function renderResources() {
+    // Triage stations
+    const triageContainer = document.getElementById('triageStations');
+    triageContainer.innerHTML = '';
+    triageStations.forEach((patient, i) => {
+      const resource = document.createElement('div');
+      resource.className = 'resource' + (patient ? ' occupied' : '');
+      
+      const label = document.createElement('div');
+      label.className = 'resource-label';
+      label.textContent = `Nurse ${i + 1}`;
+      resource.appendChild(label);
+      
+      if (patient) {
+        const patientEl = document.createElement('div');
+        patientEl.className = 'resource-patient ' + acuityColors[patient.acuity];
+        patientEl.textContent = patient.id;
+        resource.appendChild(patientEl);
+      }
+      
+      triageContainer.appendChild(resource);
+    });
+    
+    // Treatment bays
+    const bayContainer = document.getElementById('treatmentBays');
+    bayContainer.innerHTML = '';
+    treatmentBays.forEach((patient, i) => {
+      const resource = document.createElement('div');
+      resource.className = 'resource' + (patient ? ' occupied' : '');
+      
+      const label = document.createElement('div');
+      label.className = 'resource-label';
+      label.textContent = `Bay ${i + 1}`;
+      resource.appendChild(label);
+      
+      if (patient) {
+        const patientEl = document.createElement('div');
+        patientEl.className = 'resource-patient ' + acuityColors[patient.acuity];
+        patientEl.textContent = patient.id;
+        resource.appendChild(patientEl);
+      }
+      
+      bayContainer.appendChild(resource);
+    });
+  }
+
+  function createPatientElement(patient) {
+    const el = document.createElement('div');
+    el.className = 'patient ' + acuityColors[patient.acuity];
+    el.textContent = patient.id;
+    el.title = `Patient ${patient.id} - ${patient.acuity}`;
+    
+    el.addEventListener('mouseenter', (e) => {
+      const tooltip = document.getElementById('tooltip');
+      tooltip.innerHTML = `
+        <strong>Patient ${patient.id}</strong><br>
+        Acuity: ${patient.acuity}<br>
+        Status: ${patient.status.replace(/_/g, ' ')}<br>
+        Time in system: ${(simTime - patient.arrivalTime).toFixed(1)} min
+      `;
+      tooltip.style.display = 'block';
+      tooltip.style.left = e.pageX + 10 + 'px';
+      tooltip.style.top = e.pageY + 10 + 'px';
+    });
+    
+    el.addEventListener('mouseleave', () => {
+      document.getElementById('tooltip').style.display = 'none';
+    });
+    
+    return el;
+  }
+
+  function log(message) {
+    const logPanel = document.getElementById('logPanel');
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    
+    const hours = Math.floor(simTime / 60);
+    const mins = Math.floor(simTime % 60);
+    const timeStr = `${hours}:${mins.toString().padStart(2, '0')}`;
+    
+    entry.innerHTML = `<span class="log-time">[${timeStr}]</span>${message}`;
+    logPanel.insertBefore(entry, logPanel.firstChild);
+    
+    // Keep only last 50 entries
+    while (logPanel.children.length > 50) {
+      logPanel.removeChild(logPanel.lastChild);
+    }
+  }
+
+  function weightedRandom(items, weights) {
+    const total = weights.reduce((a, b) => a + b, 0);
+    let random = Math.random() * total;
+    
+    for (let i = 0; i < items.length; i++) {
+      random -= weights[i];
+      if (random <= 0) return items[i];
+    }
+    
+    return items[items.length - 1];
+  }
+
+  // Speed control
+  document.getElementById('speed').addEventListener('input', (e) => {
+    document.getElementById('speedLabel').textContent = e.target.value + 'x';
+  });
+
+  // Load parameters when page loads
+  loadParameters();
+</script>
+
+</body>
+</html>

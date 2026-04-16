@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emergency Department Simulation Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --brand-blue:        #3182bd;
+      --brand-blue-dark:   #2166a8;
+      --brand-yellow:      #ffeda0;
+      --brand-lavender:    #9ebcda;
+      --brand-purple:      #8856a7;
+      --brand-purple-dark: #6a3d8a;
+      --brand-pale:        #deebf7;
+
+      --bg-primary:   #ffffff;
+      --bg-secondary: #f5f7fa;
+      --text-primary: #1a1a1a;
+      --text-secondary: #5a6270;
+      --text-tertiary:  #9ba3ad;
+      --border:        rgba(0,0,0,0.10);
+      --border-md:     rgba(0,0,0,0.18);
+      --radius-md:     8px;
+      --radius-lg:     12px;
+
+      --font: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+    }
+
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
+
+    body {
+      font-family: var(--font);
+      background: var(--bg-secondary);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    /* ── Shell ─────────────────────────────────────── */
+    .shell {
+      width: 100%;
+      max-width: 1200px;
+      background: var(--bg-primary);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+    }
+
+    /* ── Top bar */
+    .top-bar {
+      background: var(--brand-blue);
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .top-bar-left h1 {
+      font-size: 17px;
+      font-weight: 500;
+      color: #fff;
+      letter-spacing: 0.01em;
+    }
+
+    .top-bar-left p {
+      font-size: 12px;
+      color: rgba(255,255,255,0.75);
+      margin-top: 2px;
+    }
+
+    .status-pill {
+      font-size: 11px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.18);
+      color: rgba(255,255,255,0.9);
+      border: 0.5px solid rgba(255,255,255,0.3);
+      white-space: nowrap;
+    }
+
+    /* ── Body grid  */
+    .body-grid {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      min-height: 580px;
+    }
+
+    /* ── Sidebar  */
+    .sidebar {
+      background: var(--brand-pale);
+      padding: 20px 16px;
+      border-right: 0.5px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .sidebar-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--brand-blue);
+      margin-bottom: 6px;
+    }
+
+    .controls { display: flex; flex-direction: column; gap: 10px; }
+
+    .control-group { display: flex; flex-direction: column; gap: 4px; }
+
+    .control-group label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .control-group select,
+    .control-group input[type="number"] {
+      width: 100%;
+      padding: 7px 10px;
+      border: 0.5px solid var(--border-md);
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-family: var(--font);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.15s;
+      appearance: auto;
+    }
+
+    .control-group select:focus,
+    .control-group input:focus {
+      border-color: var(--brand-blue);
+    }
+
+    .btn-run {
+      width: 100%;
+      padding: 10px;
+      background: var(--brand-blue);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 500;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+      margin-top: 4px;
+    }
+
+    .btn-run:hover:not(:disabled) { background: var(--brand-blue-dark); }
+    .btn-run:active:not(:disabled) { transform: scale(0.98); }
+    .btn-run:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .divider {
+      height: 0.5px;
+      background: var(--border);
+    }
+
+    .params-block {
+      background: var(--bg-primary);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px;
+    }
+
+    .param-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      padding: 3px 0;
+      color: var(--text-secondary);
+      border-bottom: 0.5px solid var(--border);
+    }
+
+    .param-row:last-child { border-bottom: none; }
+    .param-row span:last-child {
+      font-weight: 500;
+      color: var(--brand-purple);
+    }
+
+    /* ── Main content ──────────────────────────────── */
+    .main {
+      padding: 20px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      overflow-y: auto;
+    }
+
+    /* ── Alert ─────────────────────────────────────── */
+    .alert-box {
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      border: 0.5px solid;
+      display: none;
+    }
+
+    .alert-box.info {
+      background: var(--brand-pale);
+      border-color: var(--brand-lavender);
+      color: var(--brand-blue-dark, #2166a8);
+      display: block;
+    }
+
+    .alert-box.error {
+      background: #fff0f0;
+      border-color: #f5c6cb;
+      color: #721c24;
+      display: block;
+    }
+
+    /* ── Metric cards ──────────────────────────────── */
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .metric-card {
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .m-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+
+    .m-value {
+      font-size: 24px;
+      font-weight: 500;
+      color: var(--brand-blue);
+      line-height: 1.1;
+    }
+
+    .m-sub {
+      font-size: 10px;
+      color: var(--text-tertiary);
+    }
+
+    /* ── Section cards ─────────────────────────────── */
+    .section-card {
+      background: var(--bg-primary);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px 18px;
+    }
+
+    .section-card h3 {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 14px;
+    }
+
+    /* ── Acuity tiles ──────────────────────────────── */
+    .acuity-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
+    .acuity-tile {
+      border-radius: var(--radius-md);
+      padding: 10px 8px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .a-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .a-count {
+      font-size: 22px;
+      font-weight: 500;
+    }
+
+    .a-pct {
+      font-size: 10px;
+      opacity: 0.8;
+    }
+
+    .at-red    { background: #dc3545; }
+    .at-red    .a-label, .at-red .a-count, .at-red .a-pct    { color: #ffffff; }
+    .at-orange { background: #fd7e14; }
+    .at-orange .a-label, .at-orange .a-count, .at-orange .a-pct { color: #ffffff; }
+    .at-yellow { background: #ffc107; }
+    .at-yellow .a-label, .at-yellow .a-count, .at-yellow .a-pct { color: #333333; }
+    .at-green  { background: #28a745; }
+    .at-green  .a-label, .at-green .a-count, .at-green .a-pct  { color: #ffffff; }
+    .at-blue   { background: #007bff; }
+    .at-blue   .a-label, .at-blue .a-count, .at-blue .a-pct   { color: #ffffff; }
+
+    /* ── Charts ────────────────────────────────────── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .chart-wrap {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 120px;
+      padding-bottom: 22px;
+      position: relative;
+    }
+
+    .chart-empty {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      align-self: center;
+      margin: auto;
+    }
+
+    .chart-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 3px;
+      position: relative;
+    }
+
+    .bar {
+      width: 100%;
+      border-radius: 3px 3px 0 0;
+      transition: height 0.4s ease;
+      min-height: 2px;
+    }
+
+    .bar-arrival { background: var(--brand-lavender); }
+    .bar-wait    { background: var(--brand-purple); }
+
+    .bar-tick {
+      font-size: 9px;
+      color: var(--text-tertiary);
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+
+    /* ── Loading animation ─────────────────────────── */
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.55; }
+    }
+
+    .pulsing { animation: pulse 1.4s ease-in-out infinite; }
+
+    /* ── Responsive ────────────────────────────────── */
+    @media (max-width: 720px) {
+      .body-grid { grid-template-columns: 1fr; }
+      .sidebar   { border-right: none; border-bottom: 0.5px solid var(--border); }
+      .metrics-row { grid-template-columns: repeat(2, 1fr); }
+      .acuity-row  { grid-template-columns: repeat(3, 1fr); }
+      .two-col     { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <h1>Emergency Department Simulation</h1>
+      <p>SATS triage system policy comparison dashboard</p>
+    </div>
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <a href="/animation" style="color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 6px; font-size: 13px; border: 1px solid rgba(255,255,255,0.3);">
+        🎬 Live Animation
+      </a>
+      <div class="status-pill" id="statusPill">● Awaiting data</div>
+    </div>
+  </div>
+
+  <div class="body-grid">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+
+      <div>
+        <div class="sidebar-section-label">Configuration</div>
+        <div class="controls">
+          <div class="control-group">
+            <label for="staffing">Staffing level</label>
+            <select id="staffing">
+              <option value="weekday">Weekday — 3 nurses, 12 bays</option>
+              <option value="weekend">Weekend — 2 nurses, 8 bays</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label for="policy">Policy</label>
+            <select id="policy">
+              <option value="baseline">Baseline</option>
+              <option value="fast_track">Fast track (Green)</option>
+              <option value="split_flow">Split flow (Yellow + Green)</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label for="duration">Duration (hours)</label>
+            <input type="number" id="duration" value="24" min="1" max="168">
+          </div>
+          <div class="control-group">
+            <label for="seed">Random seed</label>
+            <input type="number" id="seed" value="42" min="1">
+          </div>
+          <button class="btn-run" id="btnRun" onclick="runSim()">Run simulation</button>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div>
+        <div class="sidebar-section-label">Last run</div>
+        <div class="params-block">
+          <div class="param-row"><span>Staffing</span><span id="lr-staffing">—</span></div>
+          <div class="param-row"><span>Policy</span><span id="lr-policy">—</span></div>
+          <div class="param-row"><span>Duration</span><span id="lr-duration">—</span></div>
+          <div class="param-row"><span>Seed</span><span id="lr-seed">—</span></div>
+        </div>
+      </div>
+
+    </div><!-- /sidebar -->
+
+    <!-- Main content -->
+    <div class="main">
+
+      <div class="alert-box" id="alertBox"></div>
+
+      <!-- KPI row -->
+      <div class="metrics-row">
+        <div class="metric-card">
+          <span class="m-label">Total patients</span>
+          <span class="m-value" id="m-total">—</span>
+          <span class="m-sub">simulated arrivals</span>
+        </div>
+        <div class="metric-card">
+          <span class="m-label">Avg wait (min)</span>
+          <span class="m-value" id="m-wait">—</span>
+          <span class="m-sub">time to triage start</span>
+        </div>
+        <div class="metric-card">
+          <span class="m-label">LWBS rate</span>
+          <span class="m-value" id="m-lwbs">—</span>
+          <span class="m-sub">left without being seen</span>
+        </div>
+        <div class="metric-card">
+          <span class="m-label">Avg LOS (min)</span>
+          <span class="m-value" id="m-los">—</span>
+          <span class="m-sub">length of stay</span>
+        </div>
+      </div>
+
+      <!-- Acuity distribution -->
+      <div class="section-card">
+        <h3>Patient acuity distribution (SATS)</h3>
+        <div class="acuity-row">
+          <div class="acuity-tile at-red">
+            <span class="a-label">Red</span>
+            <span class="a-count" id="aRed">—</span>
+            <span class="a-pct"  id="pRed">—</span>
+          </div>
+          <div class="acuity-tile at-orange">
+            <span class="a-label">Orange</span>
+            <span class="a-count" id="aOrange">—</span>
+            <span class="a-pct"  id="pOrange">—</span>
+          </div>
+          <div class="acuity-tile at-yellow">
+            <span class="a-label">Yellow</span>
+            <span class="a-count" id="aYellow">—</span>
+            <span class="a-pct"  id="pYellow">—</span>
+          </div>
+          <div class="acuity-tile at-green">
+            <span class="a-label">Green</span>
+            <span class="a-count" id="aGreen">—</span>
+            <span class="a-pct"  id="pGreen">—</span>
+          </div>
+          <div class="acuity-tile at-blue">
+            <span class="a-label">Blue</span>
+            <span class="a-count" id="aBlue">—</span>
+            <span class="a-pct"  id="pBlue">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts row -->
+      <div class="two-col">
+        <div class="section-card">
+          <h3>Hourly arrival rate</h3>
+          <div class="chart-wrap" id="arrivalChart">
+            <span class="chart-empty">Run a simulation to populate</span>
+          </div>
+        </div>
+        <div class="section-card">
+          <h3>Avg wait time by acuity</h3>
+          <div class="chart-wrap" id="waitChart">
+            <span class="chart-empty">Run a simulation to populate</span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /main -->
+  </div><!-- /body-grid -->
+</div><!-- /shell -->
+
+<script>
+  const API = '';   // Change to 'http://localhost:5000' if running file separately
+
+  /* ── Utilities ───────────────────────────────────── */
+  function showAlert(msg, type) {
+    const el = document.getElementById('alertBox');
+    el.textContent = msg;
+    el.className = 'alert-box ' + type;
+    if (type !== 'error') setTimeout(() => { el.className = 'alert-box'; }, 6000);
+  }
+
+  function buildBarChart(containerId, values, labels, barClass, colors) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    const maxVal = Math.max(...values, 0.01);
+
+    values.forEach((v, i) => {
+      const col = document.createElement('div');
+      col.className = 'chart-col';
+
+      const bar = document.createElement('div');
+      bar.className = 'bar ' + barClass;
+      bar.style.height = Math.max(2, (v / maxVal) * 96) + 'px';
+      bar.title = labels[i] + ': ' + (Number.isInteger(v) ? v : v.toFixed(1));
+      
+      // Apply custom color if provided (for SATS acuity colors)
+      if (colors && colors[i]) {
+        bar.style.background = colors[i];
+        bar.style.boxShadow = `0 -2px 8px ${colors[i]}40`;
+      }
+
+      const tick = document.createElement('span');
+      tick.className = 'bar-tick';
+      tick.textContent = labels[i];
+      
+      // Color the label to match bar (for acuity charts)
+      if (colors && colors[i]) {
+        tick.style.color = colors[i];
+        tick.style.fontWeight = '700';
+      }
+      
+      // Color hour labels (0h, 6h, 12h, 18h) in black for arrival chart
+      if (labels[i] && labels[i].includes('h') && ['0h', '6h', '12h', '18h'].includes(labels[i])) {
+        tick.style.color = '#000000';  // Black color
+        tick.style.fontWeight = '700';
+      }
+
+      col.appendChild(bar);
+      col.appendChild(tick);
+      container.appendChild(col);
+    });
+  }
+
+  /* ── Update dashboard ────────────────────────────── */
+  function updateDash(data) {
+    const m = data.metrics;
+
+    document.getElementById('m-total').textContent = m.total_patients ?? '—';
+    document.getElementById('m-wait').textContent  = m.avg_wait_time != null ? m.avg_wait_time : '—';
+    document.getElementById('m-lwbs').textContent  = m.lwbs_rate     != null ? m.lwbs_rate + '%' : '—';
+    document.getElementById('m-los').textContent   = m.avg_los       != null ? m.avg_los : '—';
+
+    const dist  = m.acuity_distribution || {};
+    const total = m.total_patients || 1;
+
+    ['Red', 'Orange', 'Yellow', 'Green', 'Blue'].forEach(ac => {
+      const cnt = dist[ac] || 0;
+      const pct = ((cnt / total) * 100).toFixed(1);
+      document.getElementById('a' + ac).textContent = cnt;
+      document.getElementById('p' + ac).textContent = pct + '%';
+    });
+
+    if (data.hourly_arrivals) {
+      const arrivalColor = '#3182bd';  // Blue color for arrival rates
+      buildBarChart(
+        'arrivalChart',
+        data.hourly_arrivals,
+        data.hourly_arrivals.map((_, i) => i % 6 === 0 ? i + 'h' : ''),
+        'bar-arrival',
+        data.hourly_arrivals.map(() => arrivalColor)  // Apply blue to all bars
+      );
+    }
+
+    const wait   = m.wait_times_by_acuity || {};
+    const wOrder = ['Red', 'Orange', 'Yellow', 'Green', 'Blue'];
+    const satsColors = ['#dc3545', '#fd7e14', '#ffc107', '#28a745', '#007bff'];  // SATS acuity colors
+    buildBarChart('waitChart', wOrder.map(a => wait[a] || 0), wOrder, 'bar-wait', satsColors);
+  }
+
+  /* ── Run simulation ──────────────────────────────── */
+  async function runSim() {
+    const btn = document.getElementById('btnRun');
+    btn.disabled = true;
+    btn.textContent = 'Running…';
+    btn.classList.add('pulsing');
+
+    const staffing = document.getElementById('staffing').value;
+    const policy   = document.getElementById('policy').value;
+    const duration = parseInt(document.getElementById('duration').value);
+    const seed     = parseInt(document.getElementById('seed').value);
+
+    document.getElementById('lr-staffing').textContent = staffing;
+    document.getElementById('lr-policy').textContent   = policy;
+    document.getElementById('lr-duration').textContent = duration + 'h';
+    document.getElementById('lr-seed').textContent     = seed;
+
+    try {
+      const res = await fetch(API + '/api/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staffing, policy, duration, seed })
+      });
+
+      if (!res.ok) throw new Error('Server returned ' + res.status);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      updateDash(data);
+      showAlert('Simulation completed successfully.', 'info');
+
+    } catch (e) {
+      showAlert('Error: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Run simulation';
+      btn.classList.remove('pulsing');
+    }
+  }
+
+  /* ── Init ────────────────────────────────────────── */
+  async function init() {
+    const pill = document.getElementById('statusPill');
+
+    try {
+      const res  = await fetch(API + '/api/data-info');
+      const info = await res.json();
+      if (info.status === 'loaded') {
+        pill.textContent = '● Real data loaded — ' + info.clean_records.toLocaleString() + ' patients';
+        pill.style.background = 'rgba(40,167,69,0.22)';
+        showAlert('Dataset loaded: ' + info.clean_records.toLocaleString() + ' patient records from Kaggle dataset.', 'info');
+      } else {
+        pill.textContent = '⚠ Using default parameters';
+        pill.style.background = 'rgba(255,193,7,0.22)';
+        showAlert('CSV not found — using default parameters. Place data.csv in: emergency-service-triage-application/data.csv', 'error');
+      }
+    } catch (_) {
+      pill.textContent = '● Backend offline';
+      showAlert('Could not reach the Flask server. Start it with: python app.py', 'error');
+    }
+
+    try {
+      const res    = await fetch(API + '/api/parameters');
+      const params = await res.json();
+      const arrivalColor = '#3182bd';  // Blue color for arrival rates
+      buildBarChart(
+        'arrivalChart',
+        params.hourly_arrivals,
+        params.hourly_arrivals.map((_, i) => i % 6 === 0 ? i + 'h' : ''),
+        'bar-arrival',
+        params.hourly_arrivals.map(() => arrivalColor)  // Apply blue to all bars
+      );
+    } catch (_) { /* server not running yet — chart stays empty */ }
+  }
+
+  init();
+</script>
+</body>
+</html>
